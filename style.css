@@ -1,0 +1,34 @@
+h1 {
+	font-size:60px;
+}
+
+p {
+	font-size:14px;
+}
+
+.head {
+	text-align:center;
+	margin-top: 70px;
+}
+
+.form-group {
+	width:60%;
+	margin:20px auto;
+}
+
+.locations {
+	padding:20px 0px 0px 0px;
+}
+
+.form-buttons {
+	width:inherit;
+}
+
+.btn {
+	margin:20px 10px;
+	display:inline;
+}
+
+#buttons {
+	display:inline;
+}

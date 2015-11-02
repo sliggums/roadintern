@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title> RoadIntern - Your assistant for the long road </title>
+	<meta charset='utf-8'>
+	<script src='https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>	<link rel='stylesheet' href='http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css'>
+	<script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js'></script>
+	<script src='http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js'></script>
+	<link type='text/css' rel='stylesheet' href='style.css'>
+</head>
+
+<body>
+	<div class='container'>
+		<div class='head'>
+			<h1> RoadIntern </h1>
+			<h3> Your assistant for the long road </h3>
+		</div>
+		<div class='locations'>
+			<form>
+				<div id='forms'>
+					<div class='form-group'>
+						<label for='location1'>To</label>
+						<input type='text' id='location1' class='form-control' placeholder='donut store'>
+					</div>
+				</div>
+					<div class='form-group'>
+						<label for='last-location' id='last'>Finally</label>
+						<input type'text' id='last-location' class='form-control' value='Clicktime HQ' readonly> </input>
+					</div>
+				<center>
+					<div class='form-buttons'>
+						<div id="buttons">
+							<input class='btn btn-default' type='button' onclick='addForm()' value='Add Location'></input>
+						</div>
+						<input class='btn btn-default' type='button' value='Submit' onclick="findBestRoute()">
+					</div>
+				</center>
+			</form>
+		</div>
+		<div> 
+			<p id="fucking">
+			</p>
+
+		</div>
+	</div>
+	<script>
+		var numForms = 1;
+		var tempinitLocation;
+		var locations = ['grocery store', 'white house', '123 Block Drive', 'mall', 'heaven', 'junkyard'];
+		var removeButton = "<input class='btn btn-default' id='remove' type='button' onclick='removeForm()' Value='Remove Location'>";
+		function addForm() {
+			numForms++;			
+			var form = "<div class='form-group' id='form" + numForms + "'><label for='location" + numForms + "'>...then</label><input type='text' id='location" + numForms + "' class='form-control' placeholder='" + locations[(numForms - 1) % locations.length] + "'></div>";
+			$('#forms').append(form).fadeIn();
+			if (numForms == 2) {
+				$('#last').text('...and finally');
+				$('#buttons').append(removeButton);
+			}
+		}
+		function removeForm() {
+			$("#form" + numForms).remove();
+			numForms--;
+			if (numForms == 1) {
+				$("#remove").remove();
+			}
+		}
+		function findBestRoute() {
+			//var initLocation = "";
+			tempinitLocation = [37.7833, -122.4167];
+			var places = [];
+			var hasGeolocation = new Boolean();
+			var crap;
+			// if (navigator.geolocation) {
+			// 	console.log("Selected true");
+			// 	hasGeolocation = true;
+			// 	navigator.geolocation.getCurrentPosition(function(position) {
+			// 		see = position;
+			// 		initLocation += position.coords.latitude;
+			// 		initLocation += position.coords.longitude;
+			// 	}, function(output) {
+			// 		var out = output.message;
+			// 	}, {timeout:1000});
+			// } else {
+			// 	hasGeolocation = false;
+			// 	errorMsg(hasGeolocation);
+			// }
+			var api = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?";
+			for (i = 0; i < numForms; i++) {
+				var completeAPI = api;
+				var keyword = $("#location" + numForms).val();
+				completeAPI += addString("location", tempinitLocation[0] + "," + tempinitLocation[1]) + "&";
+				completeAPI += ("radius", 1600) + "&";
+				completeAPI += addString("rankby", "distance") + "&";
+				completeAPI += addString("keyword", keyword) + "&";
+				completeAPI += addString("key", "AIzaSyBXALbKPyNSLNfRloUm7gn64eQuJxbBLOQ");
+				var success = function(data) {
+					if (data.status != "OK") {
+						$("#fucking").text("Something went wrong.");
+						return 
+					}
+					places.push(data.results);
+				}
+				makeGetRequest(completeAPI, success);
+			}
+			findShortDist(places);
+		}
+
+		function findShortDist(data) {
+			var api = "https://maps.googleapis.com/maps/api/directions/json?";
+			var start = tempinitLocation;
+			var end = [37.785636, -122.397119];
+			var allMin = [];
+			var directionList = [];
+			var currMin;
+			var currLocation = tempinitLocation;
+			for (datum in data) {
+				currMin = closestPoint(start, end, data[datum]);
+				allMin.push(currMin);
+				start = [currMin.geometry.location.lat, currMin.geometry.location.lng];
+			}
+			for (x in allMin) {
+				var apiCall = api;
+				var toLocation = [allMin[x].geometry.location.lat, allMin[x].geometry.location.lng];
+				apiCall += addString("origin", currLocation) + "&";
+				apiCall += addString("destination", toLocation) + "&";
+				apiCall += addString("mode", "walking") + "&";
+				apiCall += addString("key", "AIzaSyBXALbKPyNSLNfRloUm7gn64eQuJxbBLOQ");
+				makeGetRequest(apiCall, success1, failure1);
+				currLocation = toLocation;
+				// Add a "You are now at LOCATION"
+				function success1(directions) {
+					directionList.push(directions);
+				}
+				function failure1(failMessage) {
+					directionList = ["API failed"];
+					//break;
+				}
+			}
+			turnToText(directionList);
+		}
+
+		function turnToText(directionList) {
+			var counter = 1;
+			$("#fucking").text("");
+			for (x in directionList) {
+				$("#fucking").append("<div id=directions" + x);
+				var legs = directionList[x].routes[0].legs;
+				for (y in legs) {
+					for (z in legs[y].steps) {
+						var step = legs[y].steps[z];
+						$("#fucking").append(counter + ") " + step.html_instructions + "<br>");
+						counter++;
+					}
+					$("#directions" + x + " div").prepend(counter + ") ").css("font-size", "14px");
+				}
+				$("#fucking").append("</div>");
+			}
+		}
+
+		//html_instructions: "Turn <b>left</b> onto <b>Cyril Magnin St</b><div style=\"font-size:0.9em\">Destination will be on the left</div>"
+
+
+		function closestPoint(point1, point2, data) {
+			var m = (point1[1] - point2[1]) / (point1[0] - point2[0]);
+			var b = point1[1] - point1[0] * m;
+			var distances = [];
+			for (x in data) {
+				var point = [data[x].geometry.location.lat, data[x].geometry.location.lng];
+				var dist = Math.abs(point[0] * m - point[1] + b) / Math.sqrt(Math.pow(m, 2) + 1);
+				distances.push(dist);
+			}
+			return data[distances.indexOf(Math.min.apply(Math, distances))];
+		}
+
+		function addString(param, value) {
+			return param + "=" + value;
+		}
+
+	   var makeGetRequest = function(link, onSuccess, onFailure) {
+	       $.ajax({
+	           type: 'GET',
+	           url: link,
+	           dataType: "json",
+	           success: onSuccess,
+	           error: onFailure,
+	           async: false
+	       });
+	   };
+
+		function errorMsg(errorFlag) {
+
+		}
+	</script>
+</body>
+
+</html>
